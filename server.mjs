@@ -523,6 +523,10 @@ async function serveStatic(res, filePath) {
     res.writeHead(200, {
       'Content-Type': MIME[path.extname(filePath).toLowerCase()] || 'application/octet-stream',
       'Content-Length': st.size,
+      // 界面文件每次都用最新的，避免改完前端后浏览器仍跑旧缓存
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
     });
     fs.createReadStream(filePath).pipe(res);
   } catch {

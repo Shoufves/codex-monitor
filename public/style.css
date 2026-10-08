@@ -29,6 +29,12 @@
 
 * { box-sizing: border-box; }
 
+/* 必须让 hidden 属性压过组件自身的 display 声明。
+   否则 .login-wrap{display:grid} 与 #detail{display:flex} 会覆盖掉
+   浏览器默认样式表里的 [hidden]{display:none}，导致元素无法被隐藏——
+   表现就是登录成功后登录框仍然糊在屏幕上。 */
+[hidden] { display: none !important; }
+
 html, body {
   margin: 0;
   height: 100%;
