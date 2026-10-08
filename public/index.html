@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1115">
+<title>Codex Monitor</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<!-- 登录 -->
+<div id="login" class="login-wrap">
+  <form id="login-form" class="login-card">
+    <h1>Codex Monitor</h1>
+    <p class="muted">本机 Codex 会话监视器</p>
+    <input id="pw" type="password" placeholder="访问密码" autocomplete="current-password" required>
+    <button type="submit" id="login-btn">进入</button>
+    <p id="login-err" class="err" hidden></p>
+  </form>
+</div>
+
+<!-- 主界面 -->
+<div id="app" hidden>
+  <header class="topbar">
+    <button id="menu-btn" class="icon-btn" aria-label="会话列表">☰</button>
+    <div class="title-block">
+      <div id="cur-title">会话列表</div>
+      <div id="cur-sub" class="muted small"></div>
+    </div>
+    <button id="reload-btn" class="icon-btn" aria-label="刷新">⟳</button>
+    <button id="logout-btn" class="icon-btn" aria-label="退出">⏻</button>
+  </header>
+
+  <div class="layout">
+    <aside id="sidebar">
+      <div class="side-head">
+        <input id="search" type="search" placeholder="搜索会话…">
+        <label class="chk"><input type="checkbox" id="only-active"> 只看进行中</label>
+      </div>
+      <ul id="thread-list"></ul>
+    </aside>
+
+    <main id="main">
+      <div id="empty" class="empty">
+        <p>← 从左侧选择一个会话</p>
+      </div>
+
+      <div id="detail" hidden>
+        <nav class="tabs">
+          <button class="tab active" data-tab="chat">对话</button>
+          <button class="tab" data-tab="gallery">成果图 <span id="media-count" class="pill">0</span></button>
+          <div class="spacer"></div>
+          <label class="chk small"><input type="checkbox" id="show-noise"> 显示上下文/用量</label>
+        </nav>
+
+        <div id="tab-chat" class="tab-panel">
+          <div id="timeline"></div>
+          <div id="jump" class="jump" hidden>↓ 有新内容</div>
+        </div>
+
+        <div id="tab-gallery" class="tab-panel" hidden>
+          <div id="gallery" class="gallery"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>
