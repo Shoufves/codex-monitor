@@ -21,6 +21,8 @@ const CODEX_HOME = process.env.CODEX_HOME || path.join(HOME, '.codex');
 const MONITOR_HOME = process.env.CODEX_MONITOR_HOME || path.join(HOME, '.codex-monitor');
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const PORT = Number(process.env.PORT || 8787);
+// 是否额外监听局域网/校园网地址。默认关闭 —— 开启后同网段的任何设备都能访问该端口。
+const BIND_LAN = process.env.BIND_LAN === '1' || process.argv.includes('--lan');
 const SESSION_TTL_MS = 30 * 24 * 3600 * 1000;
 const MEDIA_ROOTS = [
   path.join(CODEX_HOME, 'visualizations'),
@@ -731,6 +733,23 @@ function detectTailscaleIPv4() {
   return null;
 }
 
+/** 探测局域网/校园网 IPv4（排除回环、Tailscale、以及 169.254 自动私有地址） */
+function detectLanIPv4() {
+  const out = [];
+  const ifaces = os.networkInterfaces();
+  for (const name of Object.keys(ifaces)) {
+    for (const ni of ifaces[name] || []) {
+      if (ni.family !== 'IPv4' || ni.internal) continue;
+      if (ni.address.startsWith('169.254.')) continue;
+      const oct = ni.address.split('.').map(Number);
+      // Tailscale 的 CGNAT 段单独处理，不在这里重复绑定
+      if (oct[0] === 100 && oct[1] >= 64 && oct[1] <= 127) continue;
+      out.push(ni.address);
+    }
+  }
+  return out;
+}
+
 async function main() {
   // --set-password <pw>
   const argIdx = process.argv.indexOf('--set-password');
@@ -768,10 +787,16 @@ async function main() {
   }
 
   const tailscaleIp = detectTailscaleIPv4();
-  const binds = ['127.0.0.1'];
-  if (tailscaleIp) binds.push(tailscaleIp);
+  const binds = [{ host: '127.0.0.1', label: '本机' }];
+  if (tailscaleIp) binds.push({ host: tailscaleIp, label: 'Tailscale' });
 
-  for (const host of binds) {
+  const lanIps = BIND_LAN ? detectLanIPv4() : [];
+  for (const ip of lanIps) {
+    if (binds.some((b) => b.host === ip)) continue;
+    binds.push({ host: ip, label: '局域网' });
+  }
+
+  for (const { host, label } of binds) {
     const server = http.createServer((req, res) => {
       handle(req, res).catch((err) => {
         console.error('[error]', err);
@@ -780,17 +805,26 @@ async function main() {
       });
     });
     server.listen(PORT, host, () => {
-      const label = host === '127.0.0.1' ? '本机' : 'Tailscale';
       console.log(`  ${label.padEnd(10)} http://${host}:${PORT}`);
     });
   }
 
   console.log(`\nCodex 数据: ${CODEX_HOME}`);
   console.log(`配置:       ${CONFIG_PATH}`);
-  if (!tailscaleIp) {
-    console.log('\n[!] 未检测到 Tailscale 地址，当前仅本机可访问。');
+  if (tailscaleIp) {
+    console.log(`\n手机接入(Tailscale)：http://${tailscaleIp}:${PORT}`);
   } else {
-    console.log(`\n手机接入：装 Tailscale 登录同一账号后访问 http://${tailscaleIp}:${PORT}`);
+    console.log('\n[!] 未检测到 Tailscale 地址。');
+  }
+  if (BIND_LAN) {
+    if (lanIps.length) {
+      console.log(`手机接入(同网段)  ：http://${lanIps[0]}:${PORT}`);
+      console.log('  [!] 局域网通道已开启，同网段的任何设备都能访问，仅靠密码保护。');
+    } else {
+      console.log('[!] 已开启局域网通道，但没探测到可用的局域网地址。');
+    }
+  } else {
+    console.log('提示：如需同网段直连，可用 BIND_LAN=1 或 --lan 启动。');
   }
   console.log('');
 }
